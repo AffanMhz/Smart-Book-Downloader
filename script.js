@@ -1,4 +1,4 @@
-// Loading steps with professional + funny messages
+
 const loadingSteps = [
     '� Warming up the search engines...',
     '� Consulting the digital librarians...',
@@ -196,7 +196,10 @@ async function getBookInfo(query) {
                     firstPublished: book.first_publish_year || 'Unknown',
                     subjects: book.subject ? book.subject.slice(0, 5).join(', ') : 'Not specified',
                     language: book.language ? book.language.slice(0, 3).join(', ') : 'Not specified',
-                    publisher: book.publisher ? book.publisher.slice(0, 2).join(', ') : 'Unknown'
+                    publisher: book.publisher && book.publisher.length > 0 ? 
+                        book.publisher.slice(0, 2)
+                            .filter(p => p && p.toLowerCase() !== 'specified' && p.toLowerCase() !== 'not specified' && p.trim() !== '')
+                            .join(', ') || 'Unknown' : 'Unknown'
                 };
             }
         }
@@ -659,7 +662,7 @@ function clearResults(clearInput = true) {
         contextualFooter.classList.remove('show');
     }
     
-    // Properly stop and hide loading UI
+    // stop and hide loading UI
     showLoading(false);
     // Stop background loading too
     stopBackgroundLoading();
