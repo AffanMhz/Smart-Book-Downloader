@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Book Downloader</title>
+    <!-- Lucide Icons CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Fuse.js for fuzzy matching -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    
+    <!-- Local Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fa-solid fa-book-open"></i> PDF Book Downloader</h1>
+            <p>Search and download books from multiple sources</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" id="bookSearch" placeholder="Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')" onkeypress="if(event.key==='Enter') searchBook()" />
+                <button onclick="searchBook()" class="btn btn-primary">
+                    <i class="fa-solid fa-magnifying-glass"></i> Search Book
+                </button>
+                <button onclick="clearResults()" class="btn btn-secondary">
+                    <i class="fa-solid fa-trash"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Loading Indicator -->
+        <div id="loading" class="loading">
+            <div class="loading-content">
+                <div class="spinner-container">
+                    <div class="spinner" aria-hidden="true"></div>
+                    <div class="loading-text" id="loadingText">Finding great books...</div>
+                </div>
+                <div class="loading-steps" id="loadingSteps">📚 Scanning digital libraries...</div>
+            </div>
+        </div>
+
+        <!-- Background Loading Indicator -->
+        <div id="backgroundLoader" class="background-loader">
+            <div class="mini-spinner"></div>
+            <span id="backgroundLoadingText">🔍 Searching additional databases...</span>
+        </div>
+
+        <!-- Default Image Placeholder (shows before search) -->
+        <div id="defaultPlaceholder" class="default-placeholder">
+            <div class="placeholder-content">
+                <div class="placeholder-icon">
+                    📚
+                </div>
+                <h3>Welcome to PDF Book Downloader</h3>
+                <p>Search for any book title to find free downloads from multiple digital libraries</p>
+                <div class="placeholder-features">
+                    <div class="feature">
+                        <i class="fa-solid fa-search"></i>
+                        <span>Smart Search</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Direct Downloads</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fa-solid fa-globe"></i>
+                        <span>Multiple Sources</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="results">
+            <div class="book-info" id="bookInfo">
+                <h3><i class="fa-solid fa-book"></i> Book Information</h3>
+                <div class="book-details" id="bookDetails"></div>
+                <div id="bookDescription"></div>
+            </div>
+            
+            <div class="download-section">
+                <h3><i class="fa-solid fa-download"></i> Download Links <span id="resultCount" style="font-size: 0.8em; color: #6b7280; font-weight: normal;"></span></h3>
+                <div class="download-links" id="downloadLinks"></div>
+            </div>
+
+            
+            <!-- Contextual Footer (shown only with results) -->
+            <div class="contextual-footer" id="contextualFooter">
+                <div class="footer-section">
+                    <div class="footer-info">
+                        <h4><i class="fa-solid fa-book-open"></i> PDF Book Downloader</h4>
+                        <p>Smart book search across Internet Archive, Open Library & Project Gutenberg</p>
+                    </div>
+                    
+                    <div class="footer-links">
+                        <a href="https://github.com/AffanMhz/Smart-Book-Downloader" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-brands fa-github"></i> GitHub
+                        </a>
+                        <a href="https://gutenberg.org" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-solid fa-scroll"></i> Project Gutenberg
+                        </a>
+                        <a href="https://archive.org" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-solid fa-archive"></i> Internet Archive
+                        </a>
+                        <a href="https://openlibrary.org" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-solid fa-book"></i> Open Library
+                        </a>
+                        
+                    </div>
+                </div>
+                
+                <div class="footer-copyright">
+                    <p>© 2025 Affan Mhz • Built for educational purposes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+        
+        // Initialize event listener for Enter key
+        document.getElementById('bookSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchBook();
+            }
+        });
+    </script>
+
+    <!-- Local JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
