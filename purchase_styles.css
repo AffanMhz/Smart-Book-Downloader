@@ -27,14 +27,14 @@
         align-items: center;
     }
     
-    .purchase-btn {
-        width: 80%;
-        max-width: 200px;
-    }
-    
-    .no-results h3 {
+.purchase-btn {
+    width: 100%;
+    max-width: 280px;
+    margin: 4px 0;
+}    .no-results h3 {
         font-size: 1.1rem;
-        padding: 0 5px;
+        padding: 0 12px;
+        line-height: 1.5;
     }
     
     .no-results h3::before,
@@ -162,4 +162,21 @@
     color: #6b7280;
     font-size: 1rem;
     animation: fadeIn 0.6s ease;
+}
+
+@media (max-width: 576px) {
+    .no-results-message {
+        font-size: 0.9rem;
+        padding: 0 15px;
+        margin-top: 15px;
+    }
+    
+    .purchase-links {
+        padding: 12px;
+        margin-top: 15px;
+    }
+    
+    .purchase-links h4 {
+        margin-bottom: 10px;
+    }
 }
