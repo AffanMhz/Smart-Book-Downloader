@@ -8,7 +8,7 @@
  * Sends the data to a Google Sheet for later analysis
  * @param {string} query - The book title/query that yielded no results
  */
-const FAILED_SEARCH_ENDPOINT = "https://script.google.com/macros/s/AKfycbz9MwBe7_q4ab1tJRBU9LlJEgmo7AeQOR8jY3hjVj4NvjxTlqGPEAq4b2s01OjGMHFP/exec";
+const FAILED_SEARCH_ENDPOINT = "https://script.google.com/macros/s/AKfycbwm8SFKeBUldxup6ITI7S2d-FdbRpQK4BSSfIGEut13Pip7VqviWMzOiSMIgmXL6V62/exec";
 function trackFailedSearch(query) {
   // Only log if we have a valid query
   if (!query || query.trim().length < 2) return;
