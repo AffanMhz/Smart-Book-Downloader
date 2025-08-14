@@ -1,7 +1,7 @@
 // Analytics for Book Downloader
 // Tracks failed searches to improve the book collection
 
-// Google Sheet Web App URL (replace with your actual deployed URL from Google Apps Script)
+// Google Sheet Web App URL 
 
 /**
  * Tracks book searches that returned no results
