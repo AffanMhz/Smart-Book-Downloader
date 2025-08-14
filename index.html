@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Book Downloader</title>
+    <title>PDF Book Downloader - Search Free Books from Multiple Libraries</title>
+    <meta name="description" content="Search and download free books in PDF, EPUB formats from Internet Archive, Open Library, Project Gutenberg, and more sources.">
+    <meta name="keywords" content="PDF books, free ebooks, book download, digital library, online books">
+    <meta name="author" content="Affan Mhz">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://affanmhz.github.io/book-downloader/">
+    <meta property="og:title" content="PDF Book Downloader">
+    <meta property="og:description" content="Search and download free books from multiple digital libraries">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="PDF Book Downloader">
+    <meta property="twitter:description" content="Search and download free books from multiple digital libraries">
+    
     <!-- Lucide Icons CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -23,31 +38,37 @@
 
         <div class="search-section">
             <div class="search-box">
-                <input type="text" class="search-input" id="bookSearch" placeholder="Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')" onkeypress="if(event.key==='Enter') searchBook()" />
-                <button onclick="searchBook()" class="btn btn-primary">
-                    <i class="fa-solid fa-magnifying-glass"></i> Search Book
+                <label for="bookSearch" class="sr-only">Search for a book title</label>
+                <input type="text" class="search-input" id="bookSearch" 
+                       placeholder="Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')" 
+                       aria-label="Book title search" 
+                       onkeydown="if(event.key === 'Enter') { searchBook(); return false; }" />
+                <button type="button" onclick="searchBook()" class="btn btn-primary">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search Book
                 </button>
-                <button onclick="clearResults()" class="btn btn-secondary">
-                    <i class="fa-solid fa-trash"></i> Clear
+                <button type="button" onclick="clearResults()" class="btn btn-secondary">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i> Clear
                 </button>
             </div>
         </div>
 
         <!-- Main Loading Indicator -->
-        <div id="loading" class="loading">
+        <div id="loading" class="loading" role="status" aria-live="polite">
             <div class="loading-content">
                 <div class="spinner-container">
                     <div class="spinner" aria-hidden="true"></div>
                     <div class="loading-text" id="loadingText">Finding great books...</div>
                 </div>
-                <div class="loading-steps" id="loadingSteps">📚 Scanning digital libraries...</div>
+                <div class="loading-steps" id="loadingSteps">
+                    <span aria-hidden="true">📚</span> <span class="loading-message">Scanning digital libraries...</span>
+                </div>
             </div>
         </div>
 
         <!-- Background Loading Indicator -->
-        <div id="backgroundLoader" class="background-loader">
-            <div class="mini-spinner"></div>
-            <span id="backgroundLoadingText">🔍 Searching additional databases...</span>
+        <div id="backgroundLoader" class="background-loader" role="status" aria-live="polite" style="display: none;">
+            <div class="mini-spinner" aria-hidden="true"></div>
+            <span id="backgroundLoadingText"><span aria-hidden="true">🔍</span> Searching additional databases...</span>
         </div>
 
         <!-- Default Image Placeholder (shows before search) -->
@@ -128,16 +149,10 @@
                 lucide.createIcons();
             }
         });
-        
-        // Initialize event listener for Enter key
-        document.getElementById('bookSearch').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchBook();
-            }
-        });
     </script>
 
     <!-- Local JavaScript -->
+    <script src="progressive-display.js"></script>
     <script src="script.js"></script>
     
     <!-- Analytics for tracking failed searches -->
