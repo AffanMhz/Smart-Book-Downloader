@@ -669,6 +669,12 @@ function displayResults(bookInfo, downloadLinks) {
         bookInfoSection.style.display = 'none';
         
         resultCountElement.textContent = '(No results)';
+        
+        // Dispatch event for analytics to track the failed search
+        document.dispatchEvent(new CustomEvent('noBookResults', { 
+            detail: { query: bookInfo.title } 
+        }));
+        
         // Array of witty messages about paying for books
         const wittyMessages = [
             "Some wisdom comes with a price tag for a reason.",
@@ -897,4 +903,4 @@ function clearResults(clearInput = true) {
     // Remove any partial results
     const partial = document.querySelector('.results-partial');
     if (partial) partial.remove();
-}S
+}
