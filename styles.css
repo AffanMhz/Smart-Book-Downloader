@@ -728,6 +728,12 @@ body {
     font-size: 0.8em;
 }
 
+.privacy-notice {
+    margin-top: 6px;
+    font-size: 0.85em;
+    color: #9ca3af;
+}
+
 .book-info {
     background: #e8f4f8;
     padding: 25px;
