@@ -44,52 +44,56 @@ function removeStopwords(query) {
     return query.split(' ').filter(word => !stopwords.includes(word)).join(' ');
 }
 
-function generateQueryVariations(originalQuery, author = '') {
+function generateQueryVariations(originalQuery, author = '', fullVariations = false) {
     const normalized = normalizeQuery(originalQuery);
+    
+    // Core variations - always include these critical ones
     const variations = [
         originalQuery, // Exact as typed
-        normalized,    // Normalized
-        removeStopwords(normalized) // Without stopwords
+        normalized     // Normalized
     ];
     
-    // Split on common subtitle separators
+    // Split on common subtitle separators (only main title is most important)
     if (normalized.includes(':')) {
         variations.push(normalized.split(':')[0].trim());
     }
-    if (normalized.includes(' - ')) {
+    else if (normalized.includes(' - ')) { // Changed to else if to reduce variations
         variations.push(normalized.split(' - ')[0].trim());
     }
     
-    // Try to detect "Title, Author" pattern
-    if (normalized.includes(',')) {
-        const parts = normalized.split(',');
-        if (parts.length === 2) {
-            variations.push(parts[0].trim()); // Just title
-            variations.push(`${parts[0].trim()} ${parts[1].trim()}`); // Title + Author
-            // Add PDF variations for detected title/author
-            variations.push(`${parts[0].trim()} ${parts[1].trim()}.pdf`);
-            variations.push(`${parts[0].trim()}.pdf`);
-        }
-    }
-    
-    // Add author-enhanced variations if provided
-    if (author && author.toLowerCase() !== 'unknown author' && author.toLowerCase() !== 'unknown') {
-        const cleanAuthor = author.replace(/,.*$/, '').trim(); // Remove everything after first comma
-        variations.push(`${normalized} ${cleanAuthor}`);
-        variations.push(`${normalized} ${cleanAuthor}.pdf`);
-        variations.push(`"${normalized}" "${cleanAuthor}"`);
-    }
-    
-    // Force PDF keyword variations - these are crucial for finding actual PDFs
-    variations.push(`${normalized}.pdf`);
+    // PDF is the most important variation for finding downloadable content
     variations.push(`${normalized} pdf`);
-    variations.push(`"${normalized}.pdf"`);
     
-    // Add filetype variations for better targeting
-    variations.push(`${normalized} filetype:pdf`);
-    if (author && author.toLowerCase() !== 'unknown author') {
-        const cleanAuthor = author.replace(/,.*$/, '').trim();
-        variations.push(`${normalized} ${cleanAuthor} filetype:pdf`);
+    // Only include extended variations when fullVariations is true
+    // or when author information is high quality
+    if (fullVariations) {
+        // Add stopword removal variation
+        variations.push(removeStopwords(normalized));
+        
+        // Try to detect "Title, Author" pattern
+        if (normalized.includes(',')) {
+            const parts = normalized.split(',');
+            if (parts.length === 2) {
+                variations.push(parts[0].trim()); // Just title
+                // Only add one of the author variations to reduce duplicates
+                variations.push(`${parts[0].trim()} ${parts[1].trim()}`); // Title + Author
+            }
+        }
+        
+        // Add author-enhanced variations if provided and looks legitimate
+        if (author && author.toLowerCase() !== 'unknown author' && author.toLowerCase() !== 'unknown') {
+            const cleanAuthor = author.replace(/,.*$/, '').trim(); // Remove everything after first comma
+            variations.push(`${normalized} ${cleanAuthor}`);
+            
+            // Only add one PDF variation with author
+            if (cleanAuthor.length > 3) { // Only if author name seems valid
+                variations.push(`${normalized} ${cleanAuthor} filetype:pdf`);
+            }
+        }
+        
+        // Add additional PDF variations only in full mode
+        variations.push(`${normalized}.pdf`);
+        variations.push(`"${normalized}.pdf"`);
     }
     
     // Remove duplicates and empty strings
@@ -165,76 +169,99 @@ async function searchBooks(query, author = '') {
     }
 }
 
+// Track if an error animation is currently active
+let errorAnimationActive = false;
+
 // Main search function with progressive loading
 async function searchBook() {
-    const query = document.getElementById('bookSearch').value.trim();
+    const searchInput = document.getElementById('bookSearch');
+    const query = searchInput.value.trim();
     
-    if (!query) {
-        alert('Please enter a book title, author, or keyword.');
+    // Return early if query is empty or just whitespace
+    if (!query || query.length < 1) {
+        // Prevent multiple animations if already showing error
+        if (errorAnimationActive) return;
+        
+        errorAnimationActive = true;
+        
+        // Show a brief message for empty searches
+        searchInput.classList.add('search-error');
+        searchInput.placeholder = "Please enter a book title to search";
+        searchInput.focus(); // Focus on the input for better UX
+        
+        // Reset the placeholder after a few seconds
+        setTimeout(() => {
+            searchInput.classList.remove('search-error');
+            searchInput.placeholder = "Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')";
+            errorAnimationActive = false;
+        }, 2000);
+        
         return;
     }
     
-    clearResults(false);
+    // Keep the default placeholder showing until we have data
+    document.getElementById('results').style.display = 'none'; // Initially hide results container
+    document.getElementById('downloadLinks').innerHTML = '';
+    document.getElementById('resultCount').textContent = '';
+    
+    // Show loading state
     showLoading(true);
     
     try {
-        // Phase 1: Quick initial results (Open Library - fastest)
-        console.log('Phase 1: Getting quick results...');
-        const bookInfo = await getBookInfo(query);
-        const quickLinks = await searchOpenLibrary(query);
+        // Start both searches in parallel for better performance
+        const bookInfoPromise = getBookInfo(query);
+        const downloadLinksPromise = searchDownloadLinks(query, null); // Initially start without bookInfo
         
-        // Show initial results immediately
-        if (quickLinks.length > 0) {
-            displayResults(bookInfo, quickLinks);
-            // Loading will be stopped by displayResults now
-        } else if (quickLinks.length === 0) {
-            // If no quick results, display the purchase options immediately
-            displayResults(bookInfo, []);
-            return; // Exit early, don't continue with background search
+        // Wait for the book info first (should be faster)
+        const bookInfo = await bookInfoPromise;
+        
+        // Show book info as soon as it's available
+        if (!bookInfo.isDefaultInfo) {
+            displayBookInfo(bookInfo);
         }
         
-        // Phase 2: Background loading of better sources with enhanced search
-        startBackgroundLoading();
+        // Get download links (should be ready or nearly ready by now)
+        const downloadLinks = await downloadLinksPromise;
         
-        const backgroundPromises = [
-            searchInternetArchive(query, bookInfo),
-            searchProjectGutenberg(query, bookInfo)
-        ];
-        
-        const backgroundResults = await Promise.allSettled(backgroundPromises);
-        const allLinks = [...quickLinks];
-        
-        // Add results from each background source as they complete
-        backgroundResults.forEach((result, index) => {
-            if (result.status === 'fulfilled' && result.value.length > 0) {
-                allLinks.push(...result.value);
-                console.log(`Added ${result.value.length} results from source ${index + 1}`);
+        // Prioritize PDF results to the top
+        const prioritizedLinks = downloadLinks.sort((a, b) => {
+            // First priority: Direct PDF downloads
+            if (a.type && b.type) {
+                if (a.type.includes('PDF') && !b.type.includes('PDF')) return -1;
+                if (!a.type.includes('PDF') && b.type.includes('PDF')) return 1;
             }
+            
+            // Second priority: Higher relevance score
+            return (b.relevanceScore || 0) - (a.relevanceScore || 0);
         });
         
-        // Apply fuzzy matching to all results
-        const finalLinks = applyFuzzyMatching(allLinks, query);
-        
-        // Author fallback if still low results
-        if (finalLinks.length < 5 && bookInfo.author && bookInfo.author !== 'Unknown Author') {
-            console.log('Running author fallback...');
-            const authorLinks = await searchDownloadLinks(bookInfo.author);
-            const uniqueLinks = [...finalLinks, ...authorLinks].filter((link, index, arr) => 
-                arr.findIndex(l => l.url === link.url) === index
-            );
-            finalLinks.splice(0, finalLinks.length, ...uniqueLinks.slice(0, 20));
+        // Only display book info if we either have real book info or we found download links
+        if (!bookInfo.isDefaultInfo || downloadLinks.length > 0) {
+            // If we haven't already displayed book info, do it now
+            if (bookInfo.isDefaultInfo) {
+                displayBookInfo(bookInfo);
+            }
+            
+            // Display download links (even if none were found, it will show purchase options)
+            displayDownloadLinks(bookInfo, prioritizedLinks);
+        } else {
+            // No real book info and no download links found - this is likely a fake or very obscure book
+            // Show a more appropriate message
+            showNoBookFoundMessage(query);
         }
         
-        // Update with final comprehensive results
-        displayResults(bookInfo, finalLinks);
-        stopBackgroundLoading();
+        // Update contextual footer visibility
+        document.getElementById('contextualFooter').style.display = 'block';
         
     } catch (error) {
         console.error('Search error:', error);
-        showError('Search failed: ' + error.message);
-        // Make sure loading indicators are stopped
         showLoading(false);
         stopBackgroundLoading();
+        document.getElementById('downloadLinks').innerHTML = `
+            <div class="error-message">
+                <p>Sorry, an error occurred during your search. Please try again later.</p>
+            </div>
+        `;
     }
 }
 
@@ -246,6 +273,9 @@ function startBackgroundLoading() {
     
     isBackgroundLoading = true;
     const loader = document.getElementById('backgroundLoader');
+    
+    // Ensure the loader is visible by setting display property directly
+    loader.style.display = 'flex';
     loader.classList.add('show');
     
     backgroundStepIndex = 0;
@@ -265,6 +295,13 @@ function stopBackgroundLoading() {
     isBackgroundLoading = false;
     const loader = document.getElementById('backgroundLoader');
     loader.classList.remove('show');
+    
+    // Hide the loader completely when stopping
+    setTimeout(() => {
+        if (!isBackgroundLoading) {
+            loader.style.display = 'none';
+        }
+    }, 300); // Short delay for animation to complete
     
     // Remove partial results indicator
     const partial = document.querySelector('.results-partial');
@@ -310,7 +347,8 @@ async function getBookInfo(query) {
         'lat': 'Latin'
     };
 
-    const variations = generateQueryVariations(query);
+    // Use limited query variations first for speed
+    const variations = generateQueryVariations(query, '', false);
     
     try {
         // Try each variation until we get a good match
@@ -325,29 +363,58 @@ async function getBookInfo(query) {
             if (data.docs && data.docs.length > 0) {
                 const book = data.docs[0];
                 
-                // Better language processing
+                // Enhanced language processing with all languages stored
                 let languages = 'Not specified';
+                let allLanguages = [];
+                
                 if (book.language && book.language.length > 0) {
-                    languages = book.language.slice(0, 3)
-                        .map(code => languageMap[code] || code.charAt(0).toUpperCase() + code.slice(1))
-                        .join(', ');
+                    // Map all language codes to their proper names
+                    allLanguages = book.language.map(code => 
+                        languageMap[code] || code.charAt(0).toUpperCase() + code.slice(1)
+                    );
+                    
+                    // Display only the first three for the initial view
+                    languages = allLanguages.slice(0, 3).join(', ');
+                    
+                    // Add indicator if there are more languages
+                    if (allLanguages.length > 3) {
+                        languages += ` (+${allLanguages.length - 3} more)`;
+                    }
                 }
                 
-                // Better subjects processing
+                // Enhanced subjects processing with subject_facet support
                 let subjects = 'Not specified';
-                if (book.subject && book.subject.length > 0) {
+                // First try subject_facet (cleaner, categorized subjects)
+                if (book.subject_facet && book.subject_facet.length > 0) {
+                    subjects = book.subject_facet
+                        .filter(s => s && s.trim() !== '')
+                        .slice(0, 5)
+                        .join(', ') || 'Not specified';
+                } 
+                // Fall back to regular subjects if needed
+                else if (book.subject && book.subject.length > 0) {
                     subjects = book.subject
                         .filter(s => s && s.trim() !== '' && s.toLowerCase() !== 'not specified')
                         .slice(0, 5)
                         .join(', ') || 'Not specified';
                 }
                 
-                // Better publisher processing (already fixed earlier)
+                // Improved publisher processing
                 let publisher = 'Unknown';
                 if (book.publisher && book.publisher.length > 0) {
                     publisher = book.publisher.slice(0, 2)
-                        .filter(p => p && p.toLowerCase() !== 'specified' && p.toLowerCase() !== 'not specified' && p.trim() !== '')
+                        .filter(p => p && p.trim() !== '' && 
+                               p.toLowerCase() !== 'not specified' && 
+                               p.toLowerCase() !== 'unknown')
                         .join(', ') || 'Unknown';
+                }
+                
+                // Get cover image ID if available
+                let coverId = null;
+                if (book.cover_i) {
+                    coverId = book.cover_i;
+                } else if (book.cover_edition_key) {
+                    coverId = `olid:${book.cover_edition_key}`;
                 }
                 
                 return {
@@ -356,7 +423,9 @@ async function getBookInfo(query) {
                     firstPublished: book.first_publish_year || 'Unknown',
                     subjects,
                     language: languages,
-                    publisher
+                    allLanguages: allLanguages,
+                    publisher,
+                    coverId: coverId
                 };
             }
         }
@@ -370,64 +439,126 @@ async function getBookInfo(query) {
         firstPublished: 'Unknown',
         subjects: 'Not specified',
         language: 'Not specified',
-        publisher: 'Unknown'
+        allLanguages: [],
+        publisher: 'Unknown',
+        coverId: null,
+        isDefaultInfo: true // Flag to identify this as default fallback info, not a real match
     };
 }
 
 async function searchDownloadLinks(query, bookInfo = null) {
-    const links = [];
+    let links = [];
     
-    // Search Internet Archive with smart queries
+    // First try the fastest sources with limited query variations
+    // Open Library tends to be the fastest
     try {
-        const iaLinks = await searchInternetArchive(query, bookInfo);
-        links.push(...iaLinks);
-    } catch (error) {
-        console.error('Internet Archive search failed:', error);
-    }
-    
-    // Search Open Library
-    try {
-        const olLinks = await searchOpenLibrary(query);
+        // Use limited query variations for the first fast search
+        const limitedQuery = generateQueryVariations(query, bookInfo?.author || '', false);
+        const fastVariant = limitedQuery.length > 0 ? limitedQuery[0] : query;
+        
+        const olLinks = await searchOpenLibrary(fastVariant);
         links.push(...olLinks);
     } catch (error) {
-        console.error('Open Library search failed:', error);
+        console.error('Open Library quick search failed:', error);
     }
     
-    // Search Project Gutenberg
+    // Search Project Gutenberg (also typically fast)
     try {
-        const pgLinks = await searchProjectGutenberg(query, bookInfo);
+        // Use limited query variations for the first fast search
+        const limitedQuery = generateQueryVariations(query, bookInfo?.author || '', false);
+        const fastVariant = limitedQuery.length > 0 ? limitedQuery[0] : query;
+        
+        const pgLinks = await searchProjectGutenberg(fastVariant, bookInfo);
         links.push(...pgLinks);
     } catch (error) {
-        console.error('Project Gutenberg search failed:', error);
+        console.error('Project Gutenberg quick search failed:', error);
+    }
+    
+    // Only search Internet Archive (typically slower) if we have fewer than 10 results
+    // or if we have no PDF download links
+    const hasPdfLinks = links.some(link => link.type && link.type.includes('PDF'));
+    if (links.length < 10 || !hasPdfLinks) {
+        try {
+            // For Internet Archive, use more query variations because it has more content
+            const iaLinks = await searchInternetArchive(query, bookInfo);
+            links.push(...iaLinks);
+        } catch (error) {
+            console.error('Internet Archive search failed:', error);
+        }
+        
+        // If still not enough results, try a more exhaustive search of Open Library and Project Gutenberg
+        if (links.length < 5) {
+            try {
+                // Use full variations for a more exhaustive search
+                const fullQuery = generateQueryVariations(query, bookInfo?.author || '', true);
+                
+                // Search Open Library with more variations
+                const moreOlLinks = await searchOpenLibrary(query); // Use original query for more results
+                links.push(...moreOlLinks);
+                
+                // Search Project Gutenberg with more variations
+                const morePgLinks = await searchProjectGutenberg(query, bookInfo); // Use original query
+                links.push(...morePgLinks);
+            } catch (error) {
+                console.error('Expanded search failed:', error);
+            }
+        }
     }
     
     // Apply fuzzy matching to improve results
     const fuzzyFiltered = applyFuzzyMatching(links, query);
     
-    return fuzzyFiltered;
+    // Remove duplicates that might have been added from multiple searches
+    const uniqueLinks = [];
+    const seenUrls = new Set();
+    
+    for (const link of fuzzyFiltered) {
+        if (link.url && !seenUrls.has(link.url)) {
+            seenUrls.add(link.url);
+            uniqueLinks.push(link);
+        }
+    }
+    
+    return uniqueLinks;
 }
 
 async function searchInternetArchive(query, bookInfo = null) {
     const links = [];
     const author = bookInfo?.author || '';
-    const variations = generateQueryVariations(query, author);
+    // Use limited variations by default to speed up Internet Archive search
+    const variations = generateQueryVariations(query, author, false);
+    
+    // Take only the first 3 variations to speed up search
+    const limitedVariations = variations.slice(0, 3);
     
     // Prioritize PDF-specific searches
-    const pdfVariations = variations.filter(v => v.includes('.pdf') || v.includes('pdf') || v.includes('filetype:pdf'));
-    const regularVariations = variations.filter(v => !v.includes('.pdf') && !v.includes('pdf') && !v.includes('filetype:pdf'));
+    const pdfVariations = limitedVariations.filter(v => v.includes('.pdf') || v.includes('pdf') || v.includes('filetype:pdf'));
+    const regularVariations = limitedVariations.filter(v => !v.includes('.pdf') && !v.includes('pdf') && !v.includes('filetype:pdf'));
     
-    // Try PDF-focused queries first
-    const prioritizedVariations = [...pdfVariations, ...regularVariations];
+    // Try PDF-focused queries first, but limit to just a few variations
+    const prioritizedVariations = [...pdfVariations, ...regularVariations].slice(0, 3);
     
     // Build OR query for Internet Archive with PDF priority
     const orQueries = prioritizedVariations.map(v => {
+        // Direct PDF format search
         if (v.includes('filetype:pdf')) {
             return `title:(${encodeURIComponent(v.replace(' filetype:pdf', ''))}) AND format:pdf`;
         }
+        // PDF extension in query - high priority
+        else if (v.includes('.pdf')) {
+            return `title:(${encodeURIComponent(v)}) AND format:pdf`;
+        }
+        // PDF keyword search - medium priority  
+        else if (v.includes(' pdf')) {
+            return `title:(${encodeURIComponent(v.replace(' pdf', ''))}) AND format:pdf`;
+        }
+        // Standard search - lower priority
         return `title:(${encodeURIComponent(v)})`;
     }).join(' OR ');
     
-    const searchUrl = `https://archive.org/advancedsearch.php?q=(${orQueries}) AND mediatype:texts&fl=identifier,title,creator&rows=8&output=json`;
+    // Improved URL that explicitly asks for format:pdf in mediatype:texts
+    // This helps IA prioritize returning actual PDF files
+    const searchUrl = `https://archive.org/advancedsearch.php?q=(${orQueries}) AND mediatype:texts&fl=identifier,title,creator,format&sort[]=downloads desc&rows=10&output=json`;
     
     try {
         const response = await fetch(searchUrl);
@@ -530,7 +661,9 @@ async function searchOpenLibrary(query) {
                 }
             }
             
-            if (links.length >= 3) break; // Found enough results
+            // Continue searching through more variations for better results
+            // Only break if we've found a significant number of results
+            if (links.length >= 8) break;
         }
     } catch (error) {
         console.error('Open Library search error:', error);
@@ -539,12 +672,25 @@ async function searchOpenLibrary(query) {
     return links;
 }
 
-async function searchProjectGutenberg(query) {
+async function searchProjectGutenberg(query, bookInfo = null) {
     const links = [];
-    const variations = generateQueryVariations(query);
+    
+    // Use author information if available
+    let author = '';
+    if (bookInfo && bookInfo.author && bookInfo.author.toLowerCase() !== 'unknown author') {
+        author = bookInfo.author.split(',')[0].trim();
+    }
+    
+    // Generate variations with author context if available
+    const variations = generateQueryVariations(query, author);
+    
+    // Prioritize PDF variations first for faster PDF finding
+    const pdfVariations = variations.filter(v => v.includes('.pdf') || v.includes(' pdf') || v.includes('filetype:pdf'));
+    const regularVariations = variations.filter(v => !pdfVariations.includes(v));
+    const prioritizedVariations = [...pdfVariations, ...regularVariations];
     
     try {
-        for (const variant of variations) {
+        for (const variant of prioritizedVariations) {
             const encodedQuery = encodeURIComponent(variant);
             const response = await fetch(`https://gutendex.com/books/?search=${encodedQuery}`);
             if (!response.ok) continue;
@@ -653,16 +799,12 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 }
 
+// Use displayBookInfo and displayDownloadLinks from progressive-display.js
 function displayResults(bookInfo, downloadLinks) {
-    // Display download links
-    const downloadLinksContainer = document.getElementById('downloadLinks');
-    const resultCountElement = document.getElementById('resultCount');
-    const bookInfoSection = document.getElementById('bookInfo');
-    const bookDetails = document.getElementById('bookDetails');
-    
-    // Make sure loading animations are stopped regardless of results
-    showLoading(false);
-    stopBackgroundLoading();
+    // Simply call both display functions for backward compatibility
+    displayBookInfo(bookInfo);
+    displayDownloadLinks(bookInfo, downloadLinks);
+}
     
     if (downloadLinks.length === 0) {
         // For no results, hide the book information section completely
@@ -728,31 +870,49 @@ function displayResults(bookInfo, downloadLinks) {
         // If we have results, show the book information section
         bookInfoSection.style.display = 'block';
         
-        // Display book information
+        // Prepare cover image HTML if available
+        let coverHTML = '';
+        if (bookInfo.coverId) {
+            coverHTML = `
+                <div class="book-cover">
+                    <img src="https://covers.openlibrary.org/b/id/${bookInfo.coverId}-M.jpg" 
+                         alt="Cover for ${bookInfo.title}" 
+                         class="cover-image"
+                         onerror="this.style.display='none'">
+                </div>
+            `;
+        }
+        
+        // Display book information with cover image
         bookDetails.innerHTML = `
-            <div class="book-detail">
-                <strong>Title</strong>
-                ${bookInfo.title}
-            </div>
-            <div class="book-detail">
-                <strong>Author(s)</strong>
-                ${bookInfo.author}
-            </div>
-            <div class="book-detail">
-                <strong>First Published</strong>
-                ${bookInfo.firstPublished}
-            </div>
-            <div class="book-detail">
-                <strong>Language</strong>
-                ${bookInfo.language}
-            </div>
-            <div class="book-detail">
-                <strong>Publisher</strong>
-                ${bookInfo.publisher}
-            </div>
-            <div class="book-detail">
-                <strong>Subjects</strong>
-                ${bookInfo.subjects}
+            ${coverHTML}
+            <div class="book-details-grid">
+                <div class="book-detail">
+                    <strong>Title</strong>
+                    ${bookInfo.title}
+                </div>
+                <div class="book-detail">
+                    <strong>Author(s)</strong>
+                    ${bookInfo.author}
+                </div>
+                <div class="book-detail">
+                    <strong>First Published</strong>
+                    ${bookInfo.firstPublished}
+                </div>
+                <div class="book-detail">
+                    <strong>Language</strong>
+                    <span class="language-display" 
+                          title="Click to see all languages" 
+                          onclick="toggleAllLanguages(this, ${JSON.stringify(bookInfo.allLanguages || [])})">${bookInfo.language}</span>
+                </div>
+                <div class="book-detail">
+                    <strong>Publisher</strong>
+                    ${bookInfo.publisher}
+                </div>
+                <div class="book-detail">
+                    <strong>Subjects</strong>
+                    ${bookInfo.subjects}
+                </div>
             </div>
         `;
         
@@ -802,7 +962,7 @@ function displayResults(bookInfo, downloadLinks) {
             lucide.createIcons();
         }
     }, 100);
-}
+
 
 function openLink(url) {
     window.open(url, '_blank');
@@ -828,6 +988,12 @@ function showLoading(show) {
     const loadingElement = document.getElementById('loading');
     loadingElement.style.display = show ? 'block' : 'none';
     
+    // Clear any existing timeout for the long search message
+    if (window.longSearchTimeout) {
+        clearTimeout(window.longSearchTimeout);
+        window.longSearchTimeout = null;
+    }
+    
     if (show) {
         // Clear any previous interval if present
         const existing = loadingElement.getAttribute('data-interval');
@@ -845,12 +1011,31 @@ function showLoading(show) {
         
         // Store interval reference to clear it later
         loadingElement.setAttribute('data-interval', stepInterval);
+        
+        // Set timeout for long search message (8 seconds)
+        window.longSearchTimeout = setTimeout(() => {
+            // Only show if we're still loading
+            if (loadingElement.style.display === 'block') {
+                const loadingTextElement = document.getElementById('loadingText');
+                if (loadingTextElement) {
+                    loadingTextElement.innerHTML = 'This is taking longer than expected.<br>Please wait a few more seconds or check your internet connection...';
+                    loadingTextElement.classList.add('loading-slow');
+                }
+            }
+        }, 8000);
     } else {
         // Clear the interval when hiding loading
         const interval = loadingElement.getAttribute('data-interval');
         if (interval) {
             clearInterval(parseInt(interval));
             loadingElement.removeAttribute('data-interval');
+        }
+        
+        // Reset loading text when done
+        const loadingTextElement = document.getElementById('loadingText');
+        if (loadingTextElement) {
+            loadingTextElement.textContent = 'Finding great books...';
+            loadingTextElement.classList.remove('loading-slow');
         }
     }
 }
@@ -860,6 +1045,56 @@ function updateLoadingStep() {
     if (stepsElement) {
         stepsElement.textContent = loadingSteps[currentStepIndex];
     }
+}
+
+// Function to toggle showing all languages
+function toggleAllLanguages(element, allLanguages) {
+    if (!allLanguages || allLanguages.length === 0) return;
+    
+    const currentDisplay = element.getAttribute('data-showing-all') === 'true';
+    
+    if (currentDisplay) {
+        // Restore the short version
+        element.textContent = allLanguages.slice(0, 3).join(', ');
+        element.setAttribute('data-showing-all', 'false');
+        element.title = "Click to see all languages";
+    } else {
+        // Show all languages
+        element.textContent = allLanguages.join(', ');
+        element.setAttribute('data-showing-all', 'true');
+        element.title = "Click to show fewer languages";
+    }
+}
+
+function showNoBookFoundMessage(query) {
+    // Hide loading indicators
+    showLoading(false);
+    stopBackgroundLoading();
+    
+    // Hide default placeholder
+    const defaultPlaceholder = document.getElementById('defaultPlaceholder');
+    if (defaultPlaceholder) {
+        defaultPlaceholder.style.display = 'none';
+    }
+    
+    // Show the error message in the results container
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = `
+        <div class="error-message">
+            <h3>No Book Found</h3>
+            <p>We couldn't find any book matching "${query}". Please check your spelling or try a different title.</p>
+            <div class="error-suggestions">
+                <h4>Suggestions:</h4>
+                <ul>
+                    <li>Check for typos in the book title</li>
+                    <li>Try searching by the author's name instead</li>
+                    <li>Use a more general search term</li>
+                    <li>Try a different book</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    resultsDiv.style.display = 'block';
 }
 
 function showError(message) {
@@ -879,9 +1114,15 @@ function showError(message) {
 }
 
 function clearResults(clearInput = true) {
+    const searchInput = document.getElementById('bookSearch');
+    
     if (clearInput) {
-        document.getElementById('bookSearch').value = '';
+        searchInput.value = '';
+        // Also clear any error states
+        searchInput.classList.remove('search-error');
+        searchInput.placeholder = "Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')";
     }
+    
     document.getElementById('results').style.display = 'none';
     
     // Show default placeholder when results are cleared
@@ -904,3 +1145,5 @@ function clearResults(clearInput = true) {
     const partial = document.querySelector('.results-partial');
     if (partial) partial.remove();
 }
+
+// End of script
