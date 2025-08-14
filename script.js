@@ -1,24 +1,24 @@
-
+// Loading steps with professional + funny messages
 const loadingSteps = [
-    '� Warming up the search engines...',
-    '� Consulting the digital librarians...',
+    '🔧 Warming up the search engines...',
+    '📚 Consulting the digital librarians...',
     '🤖 Teaching algorithms what books are...',
-    '� Sending carrier pigeons to servers...',
+    '🕊️ Sending carrier pigeons to servers...',
     '🎯 Locating your needle in the haystack...',
     '🧠 Running fuzzy logic through coffee filters...',
     '📖 Asking books nicely to reveal themselves...',
-    '� Predicting your reading preferences...',
-    '� Launching quantum book detectors...',
-    '� Having philosophical discussions with PDFs...'
+    '🔮 Predicting your reading preferences...',
+    '🚀 Launching quantum book detectors...',
+    '🎭 Having philosophical discussions with PDFs...'
 ];
 
 const backgroundLoadingSteps = [
     '🏗️ Building better results in the background...',
     '⚡ Supercharging search algorithms...',
     '🎨 Polishing the good stuff...',
-    '� Running advanced book forensics...',
+    '🔍 Running advanced book forensics...',
     '🎪 Teaching PDFs new tricks...',
-    '� Hunting for premium content...',
+    '🕵️ Hunting for premium content...',
     '🎵 Harmonizing search frequencies...',
     '🧪 Brewing the perfect result cocktail...',
     '✨ Performing background magic...',
@@ -44,7 +44,7 @@ function removeStopwords(query) {
     return query.split(' ').filter(word => !stopwords.includes(word)).join(' ');
 }
 
-function generateQueryVariations(originalQuery) {
+function generateQueryVariations(originalQuery, author = '') {
     const normalized = normalizeQuery(originalQuery);
     const variations = [
         originalQuery, // Exact as typed
@@ -66,11 +66,103 @@ function generateQueryVariations(originalQuery) {
         if (parts.length === 2) {
             variations.push(parts[0].trim()); // Just title
             variations.push(`${parts[0].trim()} ${parts[1].trim()}`); // Title + Author
+            // Add PDF variations for detected title/author
+            variations.push(`${parts[0].trim()} ${parts[1].trim()}.pdf`);
+            variations.push(`${parts[0].trim()}.pdf`);
         }
+    }
+    
+    // Add author-enhanced variations if provided
+    if (author && author.toLowerCase() !== 'unknown author' && author.toLowerCase() !== 'unknown') {
+        const cleanAuthor = author.replace(/,.*$/, '').trim(); // Remove everything after first comma
+        variations.push(`${normalized} ${cleanAuthor}`);
+        variations.push(`${normalized} ${cleanAuthor}.pdf`);
+        variations.push(`"${normalized}" "${cleanAuthor}"`);
+    }
+    
+    // Force PDF keyword variations - these are crucial for finding actual PDFs
+    variations.push(`${normalized}.pdf`);
+    variations.push(`${normalized} pdf`);
+    variations.push(`"${normalized}.pdf"`);
+    
+    // Add filetype variations for better targeting
+    variations.push(`${normalized} filetype:pdf`);
+    if (author && author.toLowerCase() !== 'unknown author') {
+        const cleanAuthor = author.replace(/,.*$/, '').trim();
+        variations.push(`${normalized} ${cleanAuthor} filetype:pdf`);
     }
     
     // Remove duplicates and empty strings
     return [...new Set(variations)].filter(v => v.length > 0);
+}
+
+// Book search functionality
+async function searchBooks(query, author = '') {
+    const variations = generateQueryVariations(query, author);
+    const pdfVariations = variations.filter(v => v.includes('.pdf') || v.includes('pdf'));
+    const regularVariations = variations.filter(v => !v.includes('.pdf') && !v.includes('pdf'));
+    const prioritizedVariations = [...pdfVariations, ...regularVariations];
+    const links = [];
+    
+    try {
+        for (const variant of prioritizedVariations) {
+            const cleanVariant = variant.replace('.pdf', '').replace(' pdf', '').replace(' filetype:pdf', '');
+            const encodedQuery = encodeURIComponent(cleanVariant);
+            const response = await fetch(`https://gutendex.com/books/?search=${encodedQuery}`);
+            if (!response.ok) continue;
+            
+            const data = await response.json();
+            const books = data.results || [];
+            
+            for (const book of books.slice(0, 5)) {
+                const title = book.title || 'Unknown Title';
+                const author = book.authors.map(a => a.name).join(', ') || 'Unknown';
+                const formats = book.formats || {};
+                
+                // Prioritize PDF formats first
+                const pdfUrl = formats['application/pdf'];
+                if (pdfUrl) {
+                    links.push({
+                        title,
+                        author,
+                        url: pdfUrl,
+                        source: 'Project Gutenberg',
+                        details: 'Public domain PDF',
+                        downloadable: true
+                    });
+                }
+                
+                // Add other formats as fallback
+                const epubUrl = formats['application/epub+zip'];
+                if (epubUrl) {
+                    links.push({
+                        title,
+                        author,
+                        url: epubUrl,
+                        source: 'Project Gutenberg',
+                        details: 'Public domain EPUB',
+                        downloadable: true
+                    });
+                }
+                
+                const htmlUrl = formats['text/html'];
+                if (htmlUrl) {
+                    links.push({
+                        title,
+                        author,
+                        url: htmlUrl,
+                        source: 'Project Gutenberg',
+                        details: 'Read Online',
+                        downloadable: false
+                    });
+                }
+            }
+        }
+        return links;
+    } catch (error) {
+        console.error('Search error:', error);
+        return [];
+    }
 }
 
 // Main search function with progressive loading
@@ -94,15 +186,19 @@ async function searchBook() {
         // Show initial results immediately
         if (quickLinks.length > 0) {
             displayResults(bookInfo, quickLinks);
-            showLoading(false);
+            // Loading will be stopped by displayResults now
+        } else if (quickLinks.length === 0) {
+            // If no quick results, display the purchase options immediately
+            displayResults(bookInfo, []);
+            return; // Exit early, don't continue with background search
         }
         
-        // Phase 2: Background loading of better sources
+        // Phase 2: Background loading of better sources with enhanced search
         startBackgroundLoading();
         
         const backgroundPromises = [
-            searchInternetArchive(query),
-            searchProjectGutenberg(query)
+            searchInternetArchive(query, bookInfo),
+            searchProjectGutenberg(query, bookInfo)
         ];
         
         const backgroundResults = await Promise.allSettled(backgroundPromises);
@@ -134,13 +230,20 @@ async function searchBook() {
         stopBackgroundLoading();
         
     } catch (error) {
+        console.error('Search error:', error);
         showError('Search failed: ' + error.message);
+        // Make sure loading indicators are stopped
         showLoading(false);
         stopBackgroundLoading();
     }
 }
 
 function startBackgroundLoading() {
+    // Don't start background loading if main loading is still active
+    if (document.getElementById('loading').style.display === 'block') {
+        return;
+    }
+    
     isBackgroundLoading = true;
     const loader = document.getElementById('backgroundLoader');
     loader.classList.add('show');
@@ -176,6 +279,37 @@ function updateBackgroundLoadingStep() {
 }
 
 async function getBookInfo(query) {
+    // Language mapping for better display
+    const languageMap = {
+        'eng': 'English',
+        'fre': 'French', 
+        'fra': 'French',
+        'spa': 'Spanish',
+        'ger': 'German',
+        'deu': 'German',
+        'ita': 'Italian',
+        'por': 'Portuguese',
+        'rus': 'Russian',
+        'jpn': 'Japanese',
+        'chi': 'Chinese',
+        'zho': 'Chinese',
+        'ara': 'Arabic',
+        'hin': 'Hindi',
+        'kor': 'Korean',
+        'dut': 'Dutch',
+        'nld': 'Dutch',
+        'swe': 'Swedish',
+        'nor': 'Norwegian',
+        'dan': 'Danish',
+        'fin': 'Finnish',
+        'pol': 'Polish',
+        'tur': 'Turkish',
+        'gre': 'Greek',
+        'ell': 'Greek',
+        'heb': 'Hebrew',
+        'lat': 'Latin'
+    };
+
     const variations = generateQueryVariations(query);
     
     try {
@@ -190,16 +324,39 @@ async function getBookInfo(query) {
             
             if (data.docs && data.docs.length > 0) {
                 const book = data.docs[0];
+                
+                // Better language processing
+                let languages = 'Not specified';
+                if (book.language && book.language.length > 0) {
+                    languages = book.language.slice(0, 3)
+                        .map(code => languageMap[code] || code.charAt(0).toUpperCase() + code.slice(1))
+                        .join(', ');
+                }
+                
+                // Better subjects processing
+                let subjects = 'Not specified';
+                if (book.subject && book.subject.length > 0) {
+                    subjects = book.subject
+                        .filter(s => s && s.trim() !== '' && s.toLowerCase() !== 'not specified')
+                        .slice(0, 5)
+                        .join(', ') || 'Not specified';
+                }
+                
+                // Better publisher processing (already fixed earlier)
+                let publisher = 'Unknown';
+                if (book.publisher && book.publisher.length > 0) {
+                    publisher = book.publisher.slice(0, 2)
+                        .filter(p => p && p.toLowerCase() !== 'specified' && p.toLowerCase() !== 'not specified' && p.trim() !== '')
+                        .join(', ') || 'Unknown';
+                }
+                
                 return {
                     title: book.title || query,
                     author: book.author_name ? book.author_name.join(', ') : 'Unknown Author',
                     firstPublished: book.first_publish_year || 'Unknown',
-                    subjects: book.subject ? book.subject.slice(0, 5).join(', ') : 'Not specified',
-                    language: book.language ? book.language.slice(0, 3).join(', ') : 'Not specified',
-                    publisher: book.publisher && book.publisher.length > 0 ? 
-                        book.publisher.slice(0, 2)
-                            .filter(p => p && p.toLowerCase() !== 'specified' && p.toLowerCase() !== 'not specified' && p.trim() !== '')
-                            .join(', ') || 'Unknown' : 'Unknown'
+                    subjects,
+                    language: languages,
+                    publisher
                 };
             }
         }
@@ -217,12 +374,12 @@ async function getBookInfo(query) {
     };
 }
 
-async function searchDownloadLinks(query) {
+async function searchDownloadLinks(query, bookInfo = null) {
     const links = [];
     
     // Search Internet Archive with smart queries
     try {
-        const iaLinks = await searchInternetArchive(query);
+        const iaLinks = await searchInternetArchive(query, bookInfo);
         links.push(...iaLinks);
     } catch (error) {
         console.error('Internet Archive search failed:', error);
@@ -238,7 +395,7 @@ async function searchDownloadLinks(query) {
     
     // Search Project Gutenberg
     try {
-        const pgLinks = await searchProjectGutenberg(query);
+        const pgLinks = await searchProjectGutenberg(query, bookInfo);
         links.push(...pgLinks);
     } catch (error) {
         console.error('Project Gutenberg search failed:', error);
@@ -250,12 +407,26 @@ async function searchDownloadLinks(query) {
     return fuzzyFiltered;
 }
 
-async function searchInternetArchive(query) {
+async function searchInternetArchive(query, bookInfo = null) {
     const links = [];
-    const variations = generateQueryVariations(query);
+    const author = bookInfo?.author || '';
+    const variations = generateQueryVariations(query, author);
     
-    // Build OR query for Internet Archive
-    const orQueries = variations.map(v => `title:(${encodeURIComponent(v)})`).join(' OR ');
+    // Prioritize PDF-specific searches
+    const pdfVariations = variations.filter(v => v.includes('.pdf') || v.includes('pdf') || v.includes('filetype:pdf'));
+    const regularVariations = variations.filter(v => !v.includes('.pdf') && !v.includes('pdf') && !v.includes('filetype:pdf'));
+    
+    // Try PDF-focused queries first
+    const prioritizedVariations = [...pdfVariations, ...regularVariations];
+    
+    // Build OR query for Internet Archive with PDF priority
+    const orQueries = prioritizedVariations.map(v => {
+        if (v.includes('filetype:pdf')) {
+            return `title:(${encodeURIComponent(v.replace(' filetype:pdf', ''))}) AND format:pdf`;
+        }
+        return `title:(${encodeURIComponent(v)})`;
+    }).join(' OR ');
+    
     const searchUrl = `https://archive.org/advancedsearch.php?q=(${orQueries}) AND mediatype:texts&fl=identifier,title,creator&rows=8&output=json`;
     
     try {
@@ -483,49 +654,102 @@ function formatFileSize(bytes) {
 }
 
 function displayResults(bookInfo, downloadLinks) {
-    // Display book information
-    const bookDetails = document.getElementById('bookDetails');
-    bookDetails.innerHTML = `
-        <div class="book-detail">
-            <strong>Title</strong>
-            ${bookInfo.title}
-        </div>
-        <div class="book-detail">
-            <strong>Author(s)</strong>
-            ${bookInfo.author}
-        </div>
-        <div class="book-detail">
-            <strong>First Published</strong>
-            ${bookInfo.firstPublished}
-        </div>
-        <div class="book-detail">
-            <strong>Language</strong>
-            ${bookInfo.language}
-        </div>
-        <div class="book-detail">
-            <strong>Publisher</strong>
-            ${bookInfo.publisher}
-        </div>
-        <div class="book-detail">
-            <strong>Subjects</strong>
-            ${bookInfo.subjects}
-        </div>
-    `;
-    
     // Display download links
     const downloadLinksContainer = document.getElementById('downloadLinks');
     const resultCountElement = document.getElementById('resultCount');
+    const bookInfoSection = document.getElementById('bookInfo');
+    const bookDetails = document.getElementById('bookDetails');
+    
+    // Make sure loading animations are stopped regardless of results
+    showLoading(false);
+    stopBackgroundLoading();
     
     if (downloadLinks.length === 0) {
+        // For no results, hide the book information section completely
+        bookInfoSection.style.display = 'none';
+        
         resultCountElement.textContent = '(No results)';
+        // Array of witty messages about paying for books
+        const wittyMessages = [
+            "Some wisdom comes with a price tag for a reason.",
+            "Sometimes you just have to pay for knowledge!",
+            "Not all treasures are free to share.",
+            "Certain pages are priceless and priced accordingly.",
+            "When the knowledge is rare, it's worth the fare.",
+            "Some truths are too valuable to be given away.",
+            "Premium insights demand a premium seat.",
+            "Some chapters are worth every coin.",
+            "Quality knowledge doesn’t always come free.",
+            "The rarest pages are the ones you invest in.",
+            "Some lessons are premium for a reason.",
+            "When the content is gold, expect a price.",
+            "Exclusive wisdom comes with exclusive value.",
+            
+        ];
+        
+        // Get a random message from the array
+        const randomMessage = wittyMessages[Math.floor(Math.random() * wittyMessages.length)];
+        
         downloadLinksContainer.innerHTML = `
             <div class="no-results">
-                <i data-lucide="frown" style="width: 48px; height: 48px; margin-bottom: 15px; color: #6c757d;"></i>
-                <h3>No direct download links found</h3>
-                <p>Try searching with different keywords or check back later.</p>
+                <div style="text-align: center; width: 100%;">
+                    <i data-lucide="book-open" style="width: 48px; height: 48px; margin-bottom: 15px; color: #6c757d; display: inline-block;"></i>
+                </div>
+                <h3>${randomMessage}</h3>
+                
+                <div class="purchase-links">
+                    <h4>Where to buy this book:</h4>
+                    <div class="purchase-buttons">
+                        <a href="https://books.google.co.in/books?q=${encodeURIComponent(bookInfo.title + ' ' + bookInfo.author)}" target="_blank" class="purchase-btn google">
+                            <i class="fa-brands fa-google"></i> Google Books
+                        </a>
+                        <a href="https://www.amazon.in/s?k=${encodeURIComponent(bookInfo.title + ' ' + bookInfo.author)}" target="_blank" class="purchase-btn amazon">
+                            <i class="fa-brands fa-amazon"></i> Amazon India
+                        </a>
+                        <a href="https://www.flipkart.com/search?q=${encodeURIComponent(bookInfo.title + ' ' + bookInfo.author + ' book')}" target="_blank" class="purchase-btn flipkart">
+                            <i class="fa-solid fa-shopping-cart"></i> Flipkart
+                        </a>
+                        <a href="https://www.bookdepository.com/search?searchTerm=${encodeURIComponent(bookInfo.title)}&search=Find+book" target="_blank" class="purchase-btn global">
+                            <i class="fa-solid fa-globe"></i> Book Depository
+                        </a>
+                    </div>
+                </div>
+                
+                <p class="no-results-message">We couldn't find any free downloads for "${bookInfo.title}". Time to support the authors!</p>
             </div>
         `;
     } else {
+        // If we have results, show the book information section
+        bookInfoSection.style.display = 'block';
+        
+        // Display book information
+        bookDetails.innerHTML = `
+            <div class="book-detail">
+                <strong>Title</strong>
+                ${bookInfo.title}
+            </div>
+            <div class="book-detail">
+                <strong>Author(s)</strong>
+                ${bookInfo.author}
+            </div>
+            <div class="book-detail">
+                <strong>First Published</strong>
+                ${bookInfo.firstPublished}
+            </div>
+            <div class="book-detail">
+                <strong>Language</strong>
+                ${bookInfo.language}
+            </div>
+            <div class="book-detail">
+                <strong>Publisher</strong>
+                ${bookInfo.publisher}
+            </div>
+            <div class="book-detail">
+                <strong>Subjects</strong>
+                ${bookInfo.subjects}
+            </div>
+        `;
+        
         resultCountElement.textContent = `(${downloadLinks.length} result${downloadLinks.length !== 1 ? 's' : ''})`;
         downloadLinksContainer.innerHTML = downloadLinks.map(link => {
             const sourceClass = link.source.toLowerCase().replace(/\s+/g, '');
@@ -642,6 +866,10 @@ function showError(message) {
     if (defaultPlaceholder) {
         defaultPlaceholder.style.display = 'none';
     }
+    
+    // Make sure all loading animations are stopped
+    showLoading(false);
+    stopBackgroundLoading();
 }
 
 function clearResults(clearInput = true) {
@@ -662,11 +890,11 @@ function clearResults(clearInput = true) {
         contextualFooter.classList.remove('show');
     }
     
-    // stop and hide loading UI
+    // Properly stop and hide loading UI
     showLoading(false);
     // Stop background loading too
     stopBackgroundLoading();
     // Remove any partial results
     const partial = document.querySelector('.results-partial');
     if (partial) partial.remove();
-}
+}S
