@@ -3,143 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Book Downloader - Search Free Books from Multiple Libraries</title>
+    <title>PDF Book Downloader, Search Free Books from Multiple Libraries</title>
     <meta name="description" content="Search and download free books in PDF, EPUB formats from Internet Archive, Open Library, Project Gutenberg, and more sources.">
     <meta name="keywords" content="PDF books, free ebooks, book download, digital library, online books">
-    <meta name="author" content="Affan Mhz">
+    <meta name="author" content="Affan">
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js" as="script">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" as="style">
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="script.js" as="script">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://affanmhz.github.io/book-downloader/">
-    <meta property="og:title" content="PDF Book Downloader">
+    <meta property="og:title" content="PDF Book Downloader - Search Free Books from Multiple Libraries">
     <meta property="og:description" content="Search and download free books from multiple digital libraries">
+    <meta property="og:image" content="https://affanmhz.github.io/book-downloader/images/social-preview.jpg">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:title" content="PDF Book Downloader">
     <meta property="twitter:description" content="Search and download free books from multiple digital libraries">
+    <meta property="twitter:image" content="https://affanmhz.github.io/book-downloader/images/social-preview.jpg">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
     <!-- Lucide Icons CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js" defer></script>
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <!-- Fuse.js for fuzzy matching -->
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2" defer></script>
     
     <!-- Local Stylesheets -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="purchase-styles.css">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://affanmhz.github.io/book-downloader/">
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1><i class="fa-solid fa-book-open"></i> PDF Book Downloader</h1>
+        <header class="header" role="banner">
+            <h1><i class="fa-solid fa-book-open" aria-hidden="true"></i> PDF Book Downloader</h1>
             <p>Search and download books from multiple sources</p>
-        </div>
+        </header>
 
-        <div class="search-section">
-            <div class="search-box">
-                <label for="bookSearch" class="sr-only">Search for a book title</label>
-                <input type="text" class="search-input" id="bookSearch" 
-                       placeholder="Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')" 
-                       aria-label="Book title search" 
-                       onkeydown="if(event.key === 'Enter') { searchBook(); return false; }" />
-                <button type="button" onclick="searchBook()" class="btn btn-primary">
-                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search Book
-                </button>
-                <button type="button" onclick="clearResults()" class="btn btn-secondary">
-                    <i class="fa-solid fa-trash" aria-hidden="true"></i> Clear
-                </button>
-            </div>
-        </div>
-
-        <!-- Main Loading Indicator -->
-        <div id="loading" class="loading" role="status" aria-live="polite">
-            <div class="loading-content">
-                <div class="spinner-container">
-                    <div class="spinner" aria-hidden="true"></div>
-                    <div class="loading-text" id="loadingText">Finding great books...</div>
-                </div>
-                <div class="loading-steps" id="loadingSteps">
-                    <span aria-hidden="true">📚</span> <span class="loading-message">Scanning digital libraries...</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Background Loading Indicator -->
-        <div id="backgroundLoader" class="background-loader" role="status" aria-live="polite" style="display: none;">
-            <div class="mini-spinner" aria-hidden="true"></div>
-            <span id="backgroundLoadingText"><span aria-hidden="true">🔍</span> Searching additional databases...</span>
-        </div>
-
-        <!-- Default Image Placeholder (shows before search) -->
-        <div id="defaultPlaceholder" class="default-placeholder">
-            <div class="placeholder-content">
-                <div class="placeholder-icon">
-                    📚
-                </div>
-                <h3>Welcome to PDF Book Downloader</h3>
-                <p>Search for any book title to find free downloads from multiple digital libraries</p>
-                <div class="placeholder-features">
-                    <div class="feature">
-                        <i class="fa-solid fa-search"></i>
-                        <span>Smart Search</span>
+        <main role="main">
+            <section class="search-section" aria-labelledby="searchHeading">
+                <h2 id="searchHeading" class="sr-only">Book Search</h2>
+                <div class="search-box">
+                    <label for="bookSearch" class="sr-only">Search for a book title</label>
+                    <input type="text" class="search-input" id="bookSearch" 
+                           placeholder="Enter book title (e.g., 'Pride and Prejudice', '1984', 'Python Programming')" 
+                           aria-label="Book title search" 
+                           onkeydown="if(event.key === 'Enter') { searchBook(); return false; }" />
+                    <div class="search-buttons">
+                        <button type="button" onclick="searchBook()" class="btn btn-primary" aria-label="Search for books">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search Book
+                        </button>
+                        <button type="button" onclick="clearResults()" class="btn btn-secondary" aria-label="Clear search results">
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Clear
+                        </button>
                     </div>
-                    <div class="feature">
-                        <i class="fa-solid fa-download"></i>
-                        <span>Direct Downloads</span>
+                </div>
+            </section>
+
+            <!-- Main Loading Indicator -->
+            <div id="loading" class="loading" role="status" aria-live="polite" aria-busy="true" hidden>
+                <div class="loading-content">
+                    <div class="spinner-container">
+                        <div class="spinner" aria-hidden="true"></div>
+                        <div class="loading-text" id="loadingText">Finding great books...</div>
                     </div>
-                    <div class="feature">
-                        <i class="fa-solid fa-globe"></i>
-                        <span>Multiple Sources</span>
+                    <div class="loading-steps" id="loadingSteps">
+                        <span aria-hidden="true">📚</span> <span class="loading-message">Scanning digital libraries...</span>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div id="results" class="results">
-            <div class="book-info" id="bookInfo">
-                <h3><i class="fa-solid fa-book"></i> Book Information</h3>
-                <div class="book-details" id="bookDetails"></div>
-                <div id="bookDescription"></div>
-            </div>
-            
-            <div class="download-section">
-                <h3><i class="fa-solid fa-download"></i> Download Links <span id="resultCount" style="font-size: 0.8em; color: #6b7280; font-weight: normal;"></span></h3>
-                <div class="download-links" id="downloadLinks"></div>
+            <!-- Background Loading Indicator -->
+            <div id="backgroundLoader" class="background-loader" role="status" aria-live="polite" aria-busy="true" hidden>
+                <div class="mini-spinner" aria-hidden="true"></div>
+                <span id="backgroundLoadingText"><span aria-hidden="true">🔍</span> Searching additional databases...</span>
             </div>
 
-            
-            <!-- Contextual Footer (shown only with results) -->
-            <div class="contextual-footer" id="contextualFooter">
-                <div class="footer-section">
-                    <div class="footer-info">
-                        <h4><i class="fa-solid fa-book-open"></i> PDF Book Downloader</h4>
-                        <p>Smart book search across Internet Archive, Open Library & Project Gutenberg</p>
+            <!-- Default Image Placeholder (shows before search) -->
+            <div id="defaultPlaceholder" class="default-placeholder">
+                <div class="placeholder-content">
+                    <div class="placeholder-icon" aria-hidden="true">
+                        📚
                     </div>
-                    
-                    <div class="footer-links">
-                        <a href="https://github.com/AffanMhz/Smart-Book-Downloader" target="_blank" rel="noopener noreferrer">
-                            <i class="fa-brands fa-github"></i> GitHub
-                        </a>
-                        <a href="https://gutenberg.org" target="_blank" rel="noopener noreferrer">
-                            <i class="fa-solid fa-scroll"></i> Project Gutenberg
-                        </a>
-                        <a href="https://archive.org" target="_blank" rel="noopener noreferrer">
-                            <i class="fa-solid fa-archive"></i> Internet Archive
-                        </a>
-                        <a href="https://openlibrary.org" target="_blank" rel="noopener noreferrer">
-                            <i class="fa-solid fa-book"></i> Open Library
-                        </a>
-                        
+                    <h3>Welcome to PDF Book Downloader</h3>
+                    <p>Search for any book title to find free downloads from multiple digital libraries</p>
+                    <div class="placeholder-features">
+                        <div class="feature">
+                            <i class="fa-solid fa-search" aria-hidden="true"></i>
+                            <span>Smart Search</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fa-solid fa-download" aria-hidden="true"></i>
+                            <span>Direct Downloads</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                            <span>Multiple Sources</span>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <section id="results" class="results" aria-live="polite">
+                <div class="book-info" id="bookInfo">
+                    <h3><i class="fa-solid fa-book" aria-hidden="true"></i> <span>Book Information</span></h3>
+                    <div class="book-details" id="bookDetails"></div>
+                    <div id="bookDescription"></div>
                 </div>
                 
-                <div class="footer-copyright">
-                    <p>© 2025 Affan Mhz • Built for educational purposes</p>
-                    <p class="privacy-notice">We collect anonymous search data to improve our book catalog.</p>
+                <div class="download-section">
+                    <h3><i class="fa-solid fa-download" aria-hidden="true"></i> <span>Download Links</span> <span id="resultCount" class="result-count"></span></h3>
+                    <div class="download-links" id="downloadLinks"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Contextual Footer (shown only with results) -->
+        <footer class="contextual-footer" id="contextualFooter" role="contentinfo">
+            <div class="footer-section">
+                <div class="footer-info">
+                    <h4><i class="fa-solid fa-book-open" aria-hidden="true"></i> PDF Book Downloader</h4>
+                    <p>Smart book search across Internet Archive, Open Library & Project Gutenberg</p>
+                </div>
+                
+                <div class="footer-links">
+                    <a href="https://github.com/AffanMhz/Smart-Book-Downloader" target="_blank" rel="noopener noreferrer" aria-label="Visit our GitHub repository">
+                        <i class="fa-brands fa-github" aria-hidden="true"></i> GitHub
+                    </a>
+                    <a href="https://gutenberg.org" target="_blank" rel="noopener noreferrer" aria-label="Visit Project Gutenberg">
+                        <i class="fa-solid fa-scroll" aria-hidden="true"></i> Project Gutenberg
+                    </a>
+                    <a href="https://archive.org" target="_blank" rel="noopener noreferrer" aria-label="Visit Internet Archive">
+                        <i class="fa-solid fa-archive" aria-hidden="true"></i> Internet Archive
+                    </a>
+                    <a href="https://openlibrary.org" target="_blank" rel="noopener noreferrer" aria-label="Visit Open Library">
+                        <i class="fa-solid fa-book" aria-hidden="true"></i> Open Library
+                    </a>
                 </div>
             </div>
-        </div>
+            
+            <div class="footer-copyright">
+                <p>© <span id="currentYear">2025</span> Affan Mhz • Built for educational purposes</p>
+                <p class="privacy-notice">We collect anonymous search data to improve our book catalog. <a href="privacy.html" aria-label="View our privacy policy">Learn more</a></p>
+            </div>
+        </footer>
     </div>
 
     <script>
@@ -148,14 +171,21 @@
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
+            
+            // Set current year in footer
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            
+            // Hide loading indicators initially (better than style="display: none")
+            document.getElementById('loading').setAttribute('hidden', 'true');
+            document.getElementById('backgroundLoader').setAttribute('hidden', 'true');
         });
     </script>
 
     <!-- Local JavaScript -->
-    <script src="progressive-display.js"></script>
-    <script src="script.js"></script>
+    <script src="progressive-display.js" defer></script>
+    <script src="script.js" defer></script>
     
     <!-- Analytics for tracking failed searches -->
-    <script src="analytics.js"></script>
+    <script src="analytics.js" defer></script>
 </body>
 </html>
