@@ -1,0 +1,165 @@
+/* Purchase links styling */
+.purchase-links {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border: 1px dashed #d1d5db;
+    text-align: center;
+}
+
+.purchase-links h4 {
+    margin-bottom: 12px;
+    color: #4b5563;
+}
+
+.purchase-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 576px) {
+    .purchase-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .purchase-btn {
+        width: 80%;
+        max-width: 200px;
+    }
+    
+    .no-results h3 {
+        font-size: 1.1rem;
+        padding: 0 5px;
+    }
+    
+    .no-results h3::before,
+    .no-results h3::after {
+        font-size: 1.3em;
+    }
+}
+
+.purchase-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    min-width: 120px;
+}
+
+.purchase-btn i {
+    margin-right: 8px;
+}
+
+.purchase-btn.amazon {
+    background-color: #FF9900;
+    color: #000000;
+}
+
+.purchase-btn.amazon:hover {
+    background-color: #e68a00;
+}
+
+.purchase-btn.bn {
+    background-color: #295135;
+    color: white;
+}
+
+.purchase-btn.bn:hover {
+    background-color: #1e3c27;
+}
+
+.purchase-btn.google {
+    background-color: #4285F4;
+    color: white;
+}
+
+.purchase-btn.google:hover {
+    background-color: #3367d6;
+}
+
+.purchase-btn.flipkart {
+    background-color: #2874F0;
+    color: white;
+}
+
+.purchase-btn.flipkart:hover {
+    background-color: #1f5bc0;
+}
+
+.purchase-btn.global {
+    background-color: #1E88E5;
+    color: white;
+}
+
+.purchase-btn.global:hover {
+    background-color: #1565C0;
+}
+
+.no-results h3 {
+    animation: fadeIn 0.6s ease;
+    color: #4b5563;
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+    text-align: center;
+    font-style: italic;
+    padding: 0 30px;
+    position: relative;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    font-weight: 500;
+    line-height: 1.4;
+    display: block;
+    width: 100%;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Additional styling for the no-results section */
+
+/* Fix centering with quote marks */
+.no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.no-results h3::before,
+.no-results h3::after {
+    content: '"';
+    font-size: 1.5em;
+    color: #9ca3af;
+    vertical-align: -0.2em;
+    line-height: 0;
+    display: inline;
+}
+
+.no-results-message {
+    text-align: center;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+    color: #6b7280;
+    font-size: 1rem;
+    animation: fadeIn 0.6s ease;
+}
