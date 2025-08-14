@@ -49,6 +49,79 @@ body {
     -webkit-flex: 1;
     -ms-flex: 1;
     flex: 1;
+}
+.purchase-links {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border: 1px dashed #d1d5db;
+    text-align: center;
+}
+
+.purchase-links h4 {
+    margin-bottom: 12px;
+    color: #4b5563;
+}
+
+.purchase-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.purchase-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    min-width: 120px;
+}
+
+.purchase-btn i {
+    margin-right: 8px;
+}
+
+.purchase-btn.amazon {
+    background-color: #FF9900;
+    color: #000000;
+}
+
+.purchase-btn.amazon:hover {
+    background-color: #e68a00;
+}
+
+.purchase-btn.bn {
+    background-color: #295135;
+    color: white;
+}
+
+.purchase-btn.bn:hover {
+    background-color: #1e3c27;
+}
+
+.purchase-btn.google {
+    background-color: #4285F4;
+    color: white;
+}
+
+.purchase-btn.google:hover {
+    background-color: #3367d6;
+}
+
+.purchase-message {
+    font-weight: 500;
+    color: #6b7280;
+    font-style: italic;
+    margin-top: 10px;
+
+    flex: 1;
     margin-bottom: 16px;
 }
 
@@ -851,8 +924,10 @@ body {
 
 .no-results {
     text-align: center;
-    padding: 40px;
-    color: #666;
+    padding: 32px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px dashed #e5e7eb;
 }
 
 .error-message {
