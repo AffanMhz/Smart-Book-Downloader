@@ -1,12 +1,29 @@
 # Smart PDF Book Downloader
 
-**Live Demo:** https://affanmhz.github.io/Smart-Book-Downloader/
+**Live Demo:** [Add your hosted link here]
 
 > **Discover, Download, and Devour** - Your gateway to the world's largest free digital libraries
 
 [![GitHub](https://img.shields.io/badge/GitHub-AffanMhz-blue?style=flat-square&logo=github)](https://github.com/AffanMhz/Learn_Sat_basics)
 [![Made with](https://img.shields.io/badge/Made%20with-JavaScript-blue?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-Educational-green?style=flat-square)](#)
+
+## Screenshot Gallery
+
+### Home Page
+![Home Page](./images/Home.png)
+
+### Search Results
+![Search Results](./images/Results.png)
+
+### Progressive Loading
+![Searching](./images/Searching.png)
+![Searching While Displaying](./images/searching%20after%20displaying%20book%20info.png)
+
+### Error Handling
+![Search Timeout](./images/Search%20timeout.png)
+![Invalid Book Search](./images/Wrong%20book%20name%20.png)
+![No Results Found](./images/Wrong%20book%20name2.png)
 
 ## What Makes This Special?
 
@@ -20,10 +37,31 @@ Transform your book hunting from **hours to seconds** with our intelligent searc
 - **Professional UI** - Clean, responsive design that works everywhere
 - **Mobile Optimized** - Perfect experience on any device
 - **Background Enhancement** - Continuously improves results while you browse
+- **Intelligent Error Handling** - Clear feedback for invalid searches and timeouts
 
-## Live Demo
+## Getting Started
 
 Simply open `index.html` in your browser and start searching! No installation required.
+
+## Key Features
+
+### 1. Smart Search Technology
+- **Optimized Query Variations** - Intelligently generates search variations based on book titles and authors
+- **Prioritized Source Querying** - Faster sources are queried first, with slower ones only used when necessary
+- **Progressive Result Display** - Shows information as it becomes available
+- **Parallel API Processing** - Runs multiple searches simultaneously for faster results
+
+### 2. Error Handling
+- **Empty Search Detection** - Provides immediate feedback for empty search fields
+- **Invalid Book Detection** - Avoids showing default/generic information for non-existent books
+- **Search Timeout Warning** - Notifies users when searches take longer than expected
+- **Connection Status Feedback** - Suggests checking internet connection for slow responses
+
+### 3. User Experience
+- **Loading Animations** - Engaging loading messages keep users informed during searches
+- **Background Processing** - Continues searching additional sources while displaying initial results
+- **Mobile-Responsive Design** - Perfect layout on any device size
+- **Accessibility Features** - Screen reader support and keyboard navigation
 
 ## Tech Stack
 
@@ -39,15 +77,19 @@ Simply open `index.html` in your browser and start searching! No installation re
 
 ```
 Project Structure
-├── index.html      # Clean HTML structure
-├── styles.css      # Professional styling & animations
-├── script.js       # Smart search algorithms
-└── README.md       # You are here!
+├── index.html             # Clean HTML structure
+├── styles.css             # Professional styling & animations
+├── script.js              # Core search algorithms and UI logic
+├── progressive-display.js # Progressive loading functionality
+├── images/                # Screenshot gallery
+└── README.md              # You are here!
 ```
 
 ### Modular Design Benefits
 
 - **Separation of Concerns** - HTML, CSS, and JS in dedicated files
+- **Performance Optimization** - Streamlined code for faster execution
+- **Progressive Enhancement** - Works even with partial resources loaded
 - **Easy Maintenance** - Update styling without touching logic
 - **Version Control Friendly** - Track changes precisely
 - **Collaboration Ready** - Multiple developers can work simultaneously
@@ -179,6 +221,23 @@ Love the project? Here's how you can help:
 - 🔍 **Fuse.js** - Fuzzy search capabilities
 - **Font Awesome** - Beautiful icons
 
+## Recent Optimizations
+
+### Search Performance Improvements
+- **Reduced Query Variations** - Optimized the number of variations generated to focus on the most essential ones
+- **Source Prioritization** - Open Library and Project Gutenberg (faster APIs) are checked first
+- **Intelligent Fallbacks** - Internet Archive (slower but comprehensive) is only used when needed:
+  - When fewer than 10 results are found
+  - When no PDF download links are available
+- **Parallel Request Processing** - Book information and download links are requested simultaneously
+- **Progressive UI Updates** - Information is displayed immediately when available rather than waiting for all data
+
+### User Experience Enhancements
+- **Improved Error Messages** - Clear guidance when searches return no results
+- **Search Timeout Notification** - Helpful message when searches take longer than expected
+- **Loading Step Animations** - Engaging loading messages keep users informed during search
+- **Responsive Styling** - Enhanced mobile experience with touch-friendly buttons
+
 ## Future Roadmap
 
 - **Advanced Filters** - Year, language, file type
@@ -187,6 +246,7 @@ Love the project? Here's how you can help:
 - **i18n Support** - Multiple languages
 - **AI Recommendations** - Suggest similar books
 - **Cloud Sync** - Save searches across devices
+- **Local Storage Caching** - Remember recent searches for instant results
 
 ---
 
