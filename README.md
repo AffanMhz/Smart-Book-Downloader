@@ -1,6 +1,6 @@
 # Smart PDF Book Downloader
 
-**Live Demo:** [Add your hosted link here]
+**Live Demo:** https://affanmhz.github.io/Smart-Book-Downloader/
 
 > **Discover, Download, and Devour** - Your gateway to the world's largest free digital libraries
 
