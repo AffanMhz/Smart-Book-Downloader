@@ -1,4 +1,4 @@
-// Loading steps with professional + funny messages
+// Loading steps with messages
 const loadingSteps = [
     '🔧 Warming up the search engines...',
     '📚 Consulting the digital librarians...',
